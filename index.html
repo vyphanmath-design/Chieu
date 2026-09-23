@@ -1,0 +1,112 @@
+<!-- Dựa trên bản v11 nhưng thêm tính năng Load file Online -->
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <!-- Giữ nguyên các script MathJax, Pako, Font-awesome như bản v11 -->
+    <script>
+        // Cấu hình MathJax như cũ... (Tôi bỏ qua cho gọn nhưng bạn phải giữ lại nhé)
+    </script>
+    <!-- [GIỮ NGUYÊN TOÀN BỘ PHẦN HEAD VÀ CSS CỦA BẢN V11] -->
+    <style>
+        /* Thêm một chút CSS cho danh sách file online */
+        .online-indicator { color: #4caf50; font-size: 10px; margin-bottom: 5px; display: block; }
+        .btn-import-tex { background: #607d8b; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <!-- [GIỮ NGUYÊN HTML CỦA TOPBAR VÀ SIDEBAR] -->
+
+    <!-- CẢI TIẾN MODAL QUẢN LÝ -->
+    <div id="latexModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-globe"></i> KHO BÀI GIẢNG ONLINE</h2>
+                <button class="btn-close" onclick="closeLatexModal()">×</button>
+            </div>
+            <div class="modal-layout">
+                <div class="lesson-list-pane">
+                    <span class="online-indicator">● DỮ LIỆU TỪ HỆ THỐNG</span>
+                    <ul id="onlineLessonList" class="lesson-list">
+                        <!-- Danh sách bài giảng từ file list.json sẽ hiện ở đây -->
+                    </ul>
+                    
+                    <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+                    <span class="online-indicator" style="color: #ff9800;">● BÀI GIẢNG CÁ NHÂN (MÁY NÀY)</span>
+                    <button onclick="createNewLesson()" class="btn-compile" style="font-size: 13px; padding: 8px;"><i class="fas fa-plus"></i> Tạo mới</button>
+                    <ul id="lessonListUI" class="lesson-list"></ul>
+                    
+                    <input type="file" id="texFileInput" style="display:none" accept=".tex" onchange="handleFileImport(event)">
+                    <button onclick="document.getElementById('texFileInput').click()" class="btn-import-tex"><i class="fas fa-file-import"></i> Nhập file .tex từ máy</button>
+                </div>
+                
+                <div class="editor-pane">
+                    <input type="text" id="lessonTitleInput" placeholder="Tên bài giảng...">
+                    <textarea id="latexInputUI" placeholder="Nội dung LaTeX..."></textarea>
+                    <div class="modal-actions">
+                        <button class="btn-compile" onclick="saveAndCompile()">BIÊN DỊCH & GIẢNG DẠY</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- [GIỮ NGUYÊN PHẦN CÒN LẠI CỦA HTML VÀ JAVASCRIPT] -->
+
+    <script>
+        // --- CHỈNH SỬA PHẦN LOGIC ĐỂ ĐỌC NHIỀU FILE ---
+
+        // 1. Tự động tải danh sách bài từ GitHub khi mở web
+        async function loadOnlineLessons() {
+            try {
+                const response = await fetch('list.json'); // Đọc file list.json bạn đã upload
+                const onlineLessons = await response.json();
+                const container = document.getElementById('onlineLessonList');
+                container.innerHTML = '';
+                
+                onlineLessons.forEach(lesson => {
+                    const li = document.createElement('li');
+                    li.className = 'lesson-item';
+                    li.innerHTML = `<i class="fas fa-cloud-download-alt"></i> ${lesson.title}`;
+                    li.onclick = () => loadFileContent(lesson.url, lesson.title);
+                    container.appendChild(li);
+                });
+            } catch (e) {
+                console.log("Không tìm thấy dữ liệu online hoặc đang chạy offline.");
+            }
+        }
+
+        // 2. Đọc nội dung file .tex từ URL
+        async function loadFileContent(url, title) {
+            try {
+                const response = await fetch(url);
+                const text = await response.readAsText ? await response.readAsText() : await response.text();
+                document.getElementById('latexInputUI').value = text;
+                document.getElementById('lessonTitleInput').value = title;
+                saveAndCompile(); // Tự động biên dịch luôn
+            } catch (e) {
+                alert("Lỗi khi tải file bài giảng!");
+            }
+        }
+
+        // 3. Xử lý khi kéo thả hoặc chọn file .tex từ máy tính
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                document.getElementById('latexInputUI').value = content;
+                document.getElementById('lessonTitleInput').value = file.name.replace('.tex', '');
+                saveAndCompile();
+            };
+            reader.readAsText(file);
+        }
+
+        // Bổ sung vào lệnh window.onload của bạn
+        window.addEventListener('DOMContentLoaded', () => {
+            loadOnlineLessons(); // Thêm dòng này
+            // ... các code onload cũ của bản v11
+        });
+    </script>
+</body>
+</html>
